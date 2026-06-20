@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://santehnik-krivoy-rog.pp.ua/sitemap.xml
