@@ -653,6 +653,12 @@ footer {
     color: #ffd0d0;
 }
 
+.privacy-note {
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+
 .hp-field {
     position: absolute;
     left: -9999px;
@@ -677,7 +683,7 @@ footer {
   "image": "https://santehnik-krivoy-rog.pp.ua/images/logo.svg",
   "description": "Приватний сантехнік у Кривому Розі. Терміновий виклик, усунення протікань і засмічень, заміна змішувачів, труб, сифонів та підключення бойлерів.",
   "url": "https://santehnik-krivoy-rog.pp.ua",
-  "telephone": "+380662630510",
+  "telephone": "+380950426621",
   "priceRange": "від 500 грн",
   "openingHours": "Mo-Su 00:00-23:59",
   "address": {
@@ -755,7 +761,7 @@ footer {
     <p class="subtitle">🔧 Досвід 12 років • Терміновий виклик • Без посередників</p>
     <p class="areas">🚗 Виїжджаємо у всі райони Кривого Рогу</p>
     <div class="hero-buttons">
-      <a href="tel:+380662630510" class="btn">📞 066 263 05 10</a>
+      <a href="tel:+380950426621" class="btn">📞 095 042 66 21</a>
       <a href="#callback" class="btn btn-outline">✉️ Заявка</a>
     </div>
   </div>
@@ -866,7 +872,7 @@ footer {
     <h2>Контакти</h2>
     <p>📍 Кривий Ріг</p>
     <p>😀 Сантехнік Андрій</p>
-    <p>📞 <a href="tel:+380662630510">0662630510</a></p>
+    <p>📞 <a href="tel:+380950426621">0950426621</a></p>
 
     <div class="callback-box" id="callback">
       <h3>Заявка на дзвінок</h3>
@@ -875,6 +881,8 @@ footer {
         <input type="hidden" name="page_url" value="">
         <input type="hidden" name="source" value="">
         <input type="hidden" name="started_at" value="">
+        <input type="hidden" name="visitor_id" value="">
+        <input type="hidden" name="device_id" value="">
         <input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
         <label class="phone-label" for="phone-uk">Введіть номер - передзвонимо за 5 хв</label>
         <div class="phone-row">
@@ -883,17 +891,18 @@ footer {
         </div>
         <button type="submit" class="btn form-submit">Відправити</button>
         <p class="form-message" role="status" aria-live="polite"></p>
+        <p class="privacy-note">Для обробки заявки передаємо номер телефону та випадково створені ідентифікатори браузера. Це не апаратний ID пристрою.</p>
       </form>
     </div>
 
     <div class="social-buttons">
       <a href="https://t.me/santehnik_andrey" target="_blank" rel="noopener" class="social tg">Telegram</a>
-      <a href="viber://chat?number=380662630510" class="social vb">Viber</a>
+      <a href="viber://chat?number=380950426621" class="social vb">Viber</a>
     </div>
   </div>
 </section>
 
-<a href="tel:+380662630510" class="floating-call" aria-label="Подзвонити сантехніку">📞</a>
+<a href="tel:+380950426621" class="floating-call" aria-label="Подзвонити сантехніку">📞</a>
 </main>
 
 <footer>
@@ -939,6 +948,27 @@ if (burger && navLinks) {
 
 const LEAD_COOLDOWN_MS = 30 * 60 * 1000;
 
+// These are random, browser-scoped IDs, not a phone's hardware identifiers.
+// ID storage may be unavailable in private browsing or restrictive browsers.
+function getOrCreateBrowserId(key) {
+    try {
+        const stored = localStorage.getItem(key);
+        if (stored && /^[a-f0-9-]{36}$/i.test(stored)) return stored;
+    } catch (error) { /* Storage may be disabled. */ }
+
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    try { localStorage.setItem(key, id); } catch (error) { /* Storage unavailable. */ }
+    return id;
+}
+
+const visitorId = getOrCreateBrowserId('lead_visitor_id');
+const deviceId = getOrCreateBrowserId('lead_device_id');
+
 function getSource() {
     const params = new URLSearchParams(window.location.search);
 
@@ -972,6 +1002,11 @@ document.querySelectorAll('.lead-form').forEach(form => {
     if (!phoneInput || !message || !button) return;
 
     const startedAt = form.querySelector('input[name="started_at"]');
+    const visitorField = form.querySelector('input[name="visitor_id"]');
+    const deviceField = form.querySelector('input[name="device_id"]');
+    if (visitorField) visitorField.value = visitorId;
+    if (deviceField) deviceField.value = deviceId;
+
 
     if (startedAt) {
         startedAt.value = String(Date.now());
@@ -1038,6 +1073,8 @@ document.querySelectorAll('.lead-form').forEach(form => {
             formData.set('phone', '+38' + phone);
             formData.set('page_url', window.location.href);
             formData.set('source', getSource());
+            formData.set('visitor_id', visitorId);
+            formData.set('device_id', deviceId);
 
             const response = await fetch(form.action, {
                 method: 'POST',
@@ -1053,6 +1090,8 @@ document.querySelectorAll('.lead-form').forEach(form => {
             localStorage.setItem('lead_last_sent', String(Date.now()));
 
             form.reset();
+            if (visitorField) visitorField.value = visitorId;
+            if (deviceField) deviceField.value = deviceId;
 
             if (startedAt) {
                 startedAt.value = String(Date.now());
